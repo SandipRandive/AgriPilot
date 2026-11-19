@@ -1,0 +1,647 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌾 AgriPilot Smart Agriculture Dashboard</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #89f7fe, #66a6ff);
+            min-height: 100vh;
+            margin: 0;
+            padding: 35px 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #fff;
+            font-size: 2.2em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .city-box {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        input, select {
+            padding: 11px;
+            border-radius: 10px;
+            border: 1px solid #d5dce4;
+            outline: none;
+            width: 100%;
+            background: white;
+        }
+
+        .city-box input {
+            width: 230px;
+        }
+
+        button {
+            padding: 11px 18px;
+            border: none;
+            border-radius: 10px;
+            background: #0077cc;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: #005fa3;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            width: 90%;
+            max-width: 900px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+
+        .icon {
+            font-size: 35px;
+            margin-bottom: 8px;
+        }
+
+        .value {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-top: 10px;
+            overflow-wrap: anywhere;
+        }
+
+        .weather-box, .yield-box {
+            margin-top: 22px;
+            background: white;
+            padding: 24px;
+            border-radius: 18px;
+            width: 90%;
+            max-width: 900px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+
+        .weather-box h3, .yield-box h2 {
+            margin-top: 0;
+        }
+
+        .yield-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+        }
+
+        .field label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 7px;
+        }
+
+        .predict-button {
+            margin-top: 18px;
+            background: #198754;
+        }
+
+        .predict-button:hover {
+            background: #146c43;
+        }
+
+        .result {
+            display: none;
+            margin-top: 20px;
+            padding: 18px;
+            border-radius: 12px;
+            background: #edf9ef;
+            text-align: center;
+        }
+
+        .result strong {
+            font-size: 1.7em;
+            color: #176a35;
+        }
+
+        .result p {
+            color: #555;
+            font-size: 0.9em;
+        }
+
+        .error {
+            color: #b42318;
+            margin-top: 12px;
+        }
+
+        .note {
+            color: #555;
+            font-size: 0.9em;
+            margin-top: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>🌾 AgriPilot Smart Agriculture Dashboard</h1>
+
+<!-- FARM LOCATION SETTINGS -->
+<div class="weather-box" style="margin-top:0; margin-bottom:20px;">
+    <h3>📍 Farm Location Settings</h3>
+    <p class="note">Save the location where your sensors are installed. GPS is not required.</p>
+    <form id="farmLocationForm">
+        <div class="yield-form">
+            <div class="field"><label for="farmDistrict">District</label><input id="farmDistrict" required placeholder="e.g. Pune"></div>
+            <div class="field"><label for="farmState">State</label><input id="farmState" required placeholder="e.g. Maharashtra"></div>
+        </div>
+        <button type="submit" class="predict-button" id="saveFarmButton">Save Farm Location</button>
+    </form>
+    <p id="farmLocationStatus" role="status"></p>
+    <p id="activeFarmLocation" class="note"></p>
+</div>
+
+<!-- EXISTING DASHBOARD -->
+<div class="dashboard">
+    <div class="card">
+        <div class="icon">🌡️</div>
+        <div>Temperature</div>
+        <div class="value" id="temp">--</div>
+    </div>
+
+    <div class="card">
+        <div class="icon">💧</div>
+        <div>Humidity</div>
+        <div class="value" id="hum">--</div>
+    </div>
+
+    <div class="card">
+        <div class="icon">🌱</div>
+        <div>Soil Moisture</div>
+        <div class="value" id="soil">--</div>
+    </div>
+
+    <div class="card">
+        <div class="icon">🌾</div>
+        <div>Suggested Crop</div>
+        <div class="value" id="crop">--</div>
+    </div>
+
+    <div class="card">
+        <div class="icon">🚿</div>
+        <div>Irrigation Advice</div>
+        <div class="value" id="advice">--</div>
+    </div>
+</div>
+
+<!-- EXISTING WEATHER ALERTS -->
+<div class="weather-box">
+    <h3>🌦️ Weather Alerts</h3>
+    <div id="weather">--</div>
+</div>
+
+<!-- NEW YIELD PREDICTION -->
+<div class="yield-box">
+    <h2>🌾 Crop Yield Prediction</h2>
+    <p>Estimate crop yield using historical agriculture data.</p>
+
+    <form id="yieldForm">
+        <div class="yield-form">
+
+            <div class="field">
+                <label for="state">State</label>
+                <select id="state" required>
+                    <option value="">Select State</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="district">District</label>
+                <select id="district" required>
+                    <option value="">Select District</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="yieldCrop">Crop</label>
+                <select id="yieldCrop" required>
+                    <option value="">Select Crop</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="season">Season</label>
+                <select id="season" required>
+                    <option value="">Select Season</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="year">Year</label>
+                <input
+                    type="number"
+                    id="year"
+                    min="1990"
+                    max="2100"
+                    value="2026"
+                    required
+                >
+            </div>
+
+        </div>
+
+        <button
+            type="submit"
+            class="predict-button"
+            id="predictButton"
+        >
+            Predict Yield
+        </button>
+    </form>
+
+    <p id="yieldAutoStatus" class="note" role="status"></p>
+    <div class="error" id="yieldError" role="alert"></div>
+
+    <div class="result" id="yieldResult">
+        <div>Estimated Crop Yield</div>
+        <strong id="yieldValue">--</strong>
+        <p id="yieldDetails"></p>
+        <p id="yieldNote"></p>
+    </div>
+
+    <p class="note">
+        ⚠️ Experimental prediction based on historical district-level
+        records. Actual farm yield depends on soil, rainfall,
+        farming practices and other conditions.
+    </p>
+</div>
+
+<script>
+// Farm location is saved on the Flask server, not in a temporary city variable.
+// EXISTING DASHBOARD DATA
+async function fetchData() {
+    try {
+        const res = await fetch("/data");
+
+        if (!res.ok) {
+            throw new Error("Dashboard data request failed");
+        }
+
+        const data = await res.json();
+
+        document.getElementById("temp").textContent =
+            data.temp == null ? "--" : Number(data.temp).toFixed(1) + " °C";
+
+        document.getElementById("hum").textContent =
+            data.hum == null ? "--" : Number(data.hum).toFixed(1) + " %";
+
+        document.getElementById("soil").textContent =
+            data.soil == null ? "--" : Number(data.soil).toFixed(1) + " %";
+
+        document.getElementById("crop").textContent =
+            data.crop;
+        if (data.crop && data.crop !== "N/A" && data.crop !== lastRecommendedCrop) {
+            lastRecommendedCrop = data.crop;
+            await syncRecommendedYield();
+        }
+
+        document.getElementById("advice").textContent =
+            data.advice;
+
+        const weatherBox = document.getElementById("weather");
+        weatherBox.replaceChildren();
+
+        (data.weather_alerts || []).forEach(alert => {
+            const line = document.createElement("div");
+            line.textContent = alert;
+            weatherBox.appendChild(line);
+        });
+
+    } catch (error) {
+        console.error("Dashboard error:", error);
+    }
+}
+
+setInterval(fetchData, 3000);
+fetchData();
+
+
+// SAVED FARM LOCATION
+function showFarmLocation(location) {
+    const text = [location.district, location.state]
+        .filter(Boolean).join(", ");
+    document.getElementById("activeFarmLocation").textContent =
+        text ? "📍 Active farm: " + text : "No farm location saved yet.";
+}
+
+async function loadFarmLocation() {
+    try {
+        const response = await fetch("/farm-location");
+        if (!response.ok) throw new Error("Unable to load saved farm location.");
+        const location = await response.json();
+        document.getElementById("farmDistrict").value = location.district || "";
+        document.getElementById("farmState").value = location.state || "";
+        showFarmLocation(location);
+        await syncRecommendedYield();
+    } catch (error) {
+        document.getElementById("farmLocationStatus").textContent = error.message;
+    }
+}
+
+document.getElementById("farmLocationForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    const button = document.getElementById("saveFarmButton");
+    const status = document.getElementById("farmLocationStatus");
+    const location = {
+        district: document.getElementById("farmDistrict").value.trim(),
+        state: document.getElementById("farmState").value.trim()
+    };
+    button.disabled = true;
+    status.textContent = "Verifying and saving location...";
+    try {
+        const response = await fetch("/farm-location", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(location)
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Could not save location.");
+        showFarmLocation(result.farm_location);
+        status.textContent = "✅ Location saved. WeatherAPI resolved: " +
+            (result.weather_location || "Unknown");
+        await fetchData();
+        await syncRecommendedYield();
+    } catch (error) {
+        status.textContent = "⚠️ " + error.message;
+    } finally {
+        button.disabled = false;
+    }
+});
+loadFarmLocation();
+
+// POPULATE DROPDOWN OPTIONS
+function populateSelect(elementId, items, placeholder) {
+    const select = document.getElementById(elementId);
+    select.replaceChildren();
+
+    const first = document.createElement("option");
+    first.value = "";
+    first.textContent = placeholder;
+    select.appendChild(first);
+
+    items.forEach(item => {
+        const option = document.createElement("option");
+        option.value = item;
+        option.textContent = item;
+        select.appendChild(option);
+    });
+}
+
+
+// Connect Arduino recommendation + saved farm location to yield form.
+let lastRecommendedCrop = "";
+let yieldSyncId = 0;
+let yieldOptionsReady = false;
+
+function matchingOption(select, desired) {
+    const option = Array.from(select.options).find(
+        o => o.value.trim().toLowerCase() === String(desired).trim().toLowerCase()
+    );
+    return option ? option.value : "";
+}
+
+async function syncRecommendedYield() {
+    if (!yieldOptionsReady) return;
+    const requestId = ++yieldSyncId;
+    const status = document.getElementById("yieldAutoStatus");
+    const stateEl = document.getElementById("state");
+    const districtEl = document.getElementById("district");
+    const cropEl = document.getElementById("yieldCrop");
+    const seasonEl = document.getElementById("season");
+    const recommended = document.getElementById("crop").textContent.trim();
+    if (!recommended || recommended === "--" || recommended === "N/A") {
+        status.textContent = "Waiting for Arduino crop recommendation.";
+        return;
+    }
+    try {
+        const locResponse = await fetch("/farm-location");
+        if (!locResponse.ok) throw new Error("Could not read farm location.");
+        const location = await locResponse.json();
+        if (requestId !== yieldSyncId) return;
+
+        const state = matchingOption(stateEl, location.state || "");
+        if (!state) {
+            status.textContent = "Farm state is not available in the yield dataset.";
+            return;
+        }
+        stateEl.value = state;
+        const districtResponse = await fetch(
+            `/yield-options?state=${encodeURIComponent(state)}`
+        );
+        if (!districtResponse.ok) throw new Error("Could not load districts.");
+        const districtData = await districtResponse.json();
+        if (requestId !== yieldSyncId) return;
+        populateSelect("district", districtData.districts, "Select District");
+        const district = matchingOption(districtEl, location.district || "");
+        if (!district) {
+            status.textContent = "Farm district is not available in the yield dataset.";
+            return;
+        }
+        districtEl.value = district;
+
+        const crop = matchingOption(cropEl, recommended);
+        if (!crop) {
+            cropEl.value = "";
+            status.textContent = `${recommended} is not available in the historical yield dataset.`;
+            return;
+        }
+        cropEl.value = crop;
+        const availabilityResponse = await fetch(
+            `/yield-availability?state=${encodeURIComponent(state)}&district=${encodeURIComponent(district)}&crop=${encodeURIComponent(crop)}`
+        );
+        if (!availabilityResponse.ok) throw new Error("Could not check yield availability.");
+        const availability = await availabilityResponse.json();
+        if (requestId !== yieldSyncId) return;
+        const previousSeason = seasonEl.value;
+        populateSelect("season", availability.seasons, "Select Season");
+        if (availability.seasons.length === 0) {
+            status.textContent = `Arduino recommends ${crop}, but historical yield data for ${district}, ${state} is unavailable. No estimate can be made.`;
+            return;
+        }
+        seasonEl.value = matchingOption(seasonEl, previousSeason) || availability.seasons[0];
+        status.textContent = `Arduino crop: ${crop} | Farm: ${district}, ${state}. Available historical season(s): ${availability.seasons.join(", ")}.`;
+        document.getElementById("yieldError").textContent = "";
+        document.getElementById("yieldResult").style.display = "none";
+    } catch (error) {
+        if (requestId === yieldSyncId) status.textContent = error.message;
+    }
+}
+
+// LOAD STATES, CROPS AND SEASONS
+async function loadYieldOptions() {
+    try {
+        const res = await fetch("/yield-options");
+
+        if (!res.ok) {
+            throw new Error("Could not load options");
+        }
+
+        const data = await res.json();
+
+        populateSelect(
+            "state", data.states, "Select State"
+        );
+
+        populateSelect(
+            "yieldCrop", data.crops, "Select Crop"
+        );
+
+        populateSelect(
+            "season", data.seasons, "Select Season"
+        );
+        yieldOptionsReady = true;
+        await syncRecommendedYield();
+
+    } catch (error) {
+        document.getElementById("yieldError").textContent =
+            "Unable to load yield prediction options.";
+    }
+}
+
+
+// LOAD DISTRICTS WHEN STATE CHANGES
+document.getElementById("state").addEventListener(
+    "change",
+    async function () {
+        populateSelect(
+            "district", [], "Select District"
+        );
+
+        if (!this.value) return;
+
+        try {
+            const selectedState = this.value;
+
+            const res = await fetch(
+                `/yield-options?state=${encodeURIComponent(selectedState)}`
+            );
+
+            if (!res.ok) {
+                throw new Error("Could not load districts");
+            }
+
+            const data = await res.json();
+
+            // Ignore an outdated response if state changed
+            if (document.getElementById("state").value !== selectedState) {
+                return;
+            }
+
+            populateSelect(
+                "district", data.districts, "Select District"
+            );
+
+        } catch (error) {
+            document.getElementById("yieldError").textContent =
+                "Unable to load districts.";
+        }
+    }
+);
+
+
+// YIELD PREDICTION FORM
+document.getElementById("yieldForm").addEventListener(
+    "submit",
+    async function (event) {
+        event.preventDefault();
+
+        const errorBox = document.getElementById("yieldError");
+        const resultBox = document.getElementById("yieldResult");
+        const button = document.getElementById("predictButton");
+
+        errorBox.textContent = "";
+        resultBox.style.display = "none";
+
+        const payload = {
+            state: document.getElementById("state").value,
+            district: document.getElementById("district").value,
+            crop: document.getElementById("yieldCrop").value,
+            season: document.getElementById("season").value,
+            year: document.getElementById("year").value
+        };
+
+        const liveCrop = document.getElementById("crop").textContent.trim();
+        if (liveCrop && liveCrop !== "--" && liveCrop !== "N/A" &&
+            payload.crop.toLowerCase() !== liveCrop.toLowerCase()) {
+            errorBox.textContent = "Crop changed. Please use the Arduino-recommended crop.";
+            await syncRecommendedYield();
+            return;
+        }
+
+        button.disabled = true;
+        button.textContent = "Predicting...";
+
+        try {
+            const res = await fetch("/predict-yield", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(
+                    data.error || "Prediction failed"
+                );
+            }
+
+            document.getElementById("yieldValue").textContent =
+                data.predicted_yield + " " + data.unit;
+
+            document.getElementById("yieldDetails").textContent =
+                `${data.crop} | ${data.district}, ${data.state} | ${data.year}`;
+
+            document.getElementById("yieldNote").textContent =
+                data.note;
+
+            resultBox.style.display = "block";
+
+        } catch (error) {
+            errorBox.textContent = error.message;
+        } finally {
+            button.disabled = false;
+            button.textContent = "Predict Yield";
+        }
+    }
+);
+
+loadYieldOptions();
+</script>
+
+</body>
+</html>
